@@ -1,0 +1,18 @@
+version: "3"
+
+services:
+  db:
+    image: postgres:13-alpine
+    container_name: db
+    environment:
+      POSTGRES_USER: combinedemo
+      POSTGRES_PASSWORD: combinedemo
+      POSTGRES_DB: combinedemo
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+  server:
+    build: .
+    ports:
+      - "8888:8888"
+    depends_on:
+      - db
