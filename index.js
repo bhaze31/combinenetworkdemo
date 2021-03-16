@@ -10,7 +10,18 @@ const pool = new pg.Pool({
 
 const app = express();
 
+const logRequests = (req, res, next) => {
+  const start = Date.now();
+  res.on("finish", () => {
+    const diff = Date.now() - start;
+    console.log(`[!!] ${req.method}: ${req.path} ${res.statusCode} - ${diff}ms`);
+  });
+  next();
+};
+
 app.use(bodyParser.json());
+
+app.use(logRequests)
 
 app.route("/users")
   .get(async (req, res) => {
@@ -21,9 +32,9 @@ app.route("/users")
   .post(async (req, res) => {
     const { name, email, bio } = req.body;
 
-    await pool.query(`INSERT INTO users (name, email, bio) VALUES ($1, $2, $3)`, [name, email, bio]);
+    const { rows: users } = await pool.query(`INSERT INTO users (name, email, bio) VALUES ($1, $2, $3) RETURNING *`, [name, email, bio]);
 
-    return res.json({ success: true });
+    return res.json({ user: users[0] });
   });
 
 app.route("/users/:userId")
