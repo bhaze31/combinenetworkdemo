@@ -20,10 +20,6 @@ struct FetchUserResponse: Codable {
     var user: User
 }
 
-struct DeleteUserResponse: Codable {
-    var success: Bool
-}
-
 struct TokenResponse: Codable {
     var access: String
     var refresh: String?

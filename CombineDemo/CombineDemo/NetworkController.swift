@@ -40,7 +40,6 @@ class NetworkController {
     typealias RequestHandler = (Data, URLResponse) throws -> Data
 
     func get<T: Codable>(url: URL, headers: [String: String], handler: @escaping RequestHandler) -> AnyPublisher<T, Error> {
-        
         var request = URLRequest(url: url)
         
         for (header, value) in headers {
