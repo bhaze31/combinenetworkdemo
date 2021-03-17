@@ -16,8 +16,17 @@ struct CreateUserResponse: Codable {
     var user: User
 }
 
+struct FetchUserResponse: Codable {
+    var user: User
+}
+
 struct DeleteUserResponse: Codable {
     var success: Bool
+}
+
+struct TokenResponse: Codable {
+    var access: String
+    var refresh: String?
 }
 
 class User: Codable, ObservableObject, Identifiable {
@@ -26,6 +35,13 @@ class User: Codable, ObservableObject, Identifiable {
     @Published var email: String
     @Published var bio: String?
     
+    init(id: Int, name: String, email: String, bio: String) {
+        self.id = id
+        self.name = name
+        self.email = email
+        self.bio = bio
+    }
+
     required init(from decoder: Decoder) throws {
         let coder = try decoder.container(keyedBy: CodingKeys.self)
         id = try coder.decode(Int.self, forKey: .id)
@@ -55,6 +71,8 @@ final class UserViewModel: ObservableObject {
     @Published var selectedUser: User?
     @Published var attemptingToAddUser: Bool = false
 
+    typealias RequestHandler<T: Codable> = (T) -> Void
+
     private var network = NetworkController()
 
     private func defaultHeaders() -> [String: String] {
@@ -63,8 +81,23 @@ final class UserViewModel: ObservableObject {
     
     private var subscriptions: Set<AnyCancellable> = []
     
-    private func handleFetchMap(data: Data, response: URLResponse) throws -> Data {
+    private var refreshSubscription: AnyCancellable?
+
+    private func handleFetchMap(data: Data, _response: URLResponse) throws -> Data {
         // Check response code, etc, throw any errors
+        guard let response = _response as? HTTPURLResponse else {
+            throw NetworkError.Unknown
+        }
+        
+        if response.statusCode >= 400 {
+            switch response.statusCode {
+                case 401:
+                    throw NetworkError.NotAllowed
+                default:
+                    throw NetworkError.Unknown
+            }
+        }
+
         return data
     }
     
@@ -72,17 +105,49 @@ final class UserViewModel: ObservableObject {
         switch complete {
             case .failure(let e):
                 print(e)
+                if let err = e as? NetworkError, err == NetworkError.NotAllowed {
+                    print("NOT ALLOWED TO TAKE THAT ACTION")
+                }
             case .finished:
                 print("User API Completed")
+                
         }
+    }
+    
+    private func handleFetchCompletionWithRetry<T: Codable>(complete: Subscribers.Completion<Error>, retry: AnyPublisher<T, Error>, handler: @escaping RequestHandler<T>) {
+        switch complete {
+            case .failure(let e):
+                print(e)
+                if let err = e as? NetworkError, err == NetworkError.NotAllowed {
+                    print("NOT ALLOWED TO TAKE THAT ACTION")
+                    // In reality, make another call, get a token, do something, etc. This
+                    // will just fail again
+                    retry
+                        .sink(receiveCompletion: handleFetchCompletion, receiveValue: handler)
+                        .store(in: &subscriptions)
+                }
+            case .finished:
+                print("User API Completed")
+                
+        }
+    }
+    
+    
+    func handlePossibleRefreshToken<T: Codable>() -> AnyPublisher<T, Error> {
+        let endpoint = Endpoint(path: "/users")
+        
+        return network.get(url: endpoint.url, headers: defaultHeaders(), handler: handleFetchMap)
+            .eraseToAnyPublisher()
     }
 
     func fetchUsers() {
         let endpoint = Endpoint(path: "/users")
         
+        let request: AnyPublisher<FetchUsersResponse, Error> = network.get(url: endpoint.url, headers: defaultHeaders(), handler: handleFetchMap)
+
         network.get(url: endpoint.url, headers: defaultHeaders(), handler: handleFetchMap)
             .sink(
-                receiveCompletion: handleFetchCompletion,
+                receiveCompletion: { self.handleFetchCompletionWithRetry(complete: $0, retry: request, handler: self.handleFetchUsers) },
                 receiveValue: handleFetchUsers
             )
             .store(in: &subscriptions)
@@ -102,9 +167,11 @@ final class UserViewModel: ObservableObject {
             "bio": bio
         ]
 
+        let request: AnyPublisher<CreateUserResponse, Error> = network.post(url: endpoint.url, body: bodyData, headers: defaultHeaders(), handler: handleFetchMap)
+            
         network.post(url: endpoint.url, body: bodyData, headers: defaultHeaders(), handler: handleFetchMap)
             .sink(
-                receiveCompletion: handleFetchCompletion,
+                receiveCompletion: { self.handleFetchCompletionWithRetry(complete: $0, retry: request, handler: self.handleCreateUser(callback: callback)) },
                 receiveValue: handleCreateUser(callback: callback)
             )
             .store(in: &subscriptions)
@@ -122,7 +189,7 @@ final class UserViewModel: ObservableObject {
         return _handleCreateUser
     }
     
-    func editUser(id: Int, name: String, email: String, bio: String) {
+    func editUser(id: Int, name: String, email: String, bio: String, callback: @escaping () -> Void) {
         let endpoint = Endpoint(path: "/users/\(id)")
         
         let bodyData = [
@@ -131,33 +198,52 @@ final class UserViewModel: ObservableObject {
             "bio": bio
         ]
         
+        let request: AnyPublisher<CreateUserResponse, Error> = network.put(url: endpoint.url, body: bodyData, headers: defaultHeaders(), handler: handleFetchMap)
+
         network.put(url: endpoint.url, body: bodyData, headers: defaultHeaders(), handler: handleFetchMap)
             .sink(
-                receiveCompletion: handleFetchCompletion,
-                receiveValue: handleEditUser
+                receiveCompletion: { self.handleFetchCompletionWithRetry(complete: $0, retry: request, handler: self.handleEditUser(callback: callback)) },
+                receiveValue: handleEditUser(callback: callback)
             )
             .store(in: &subscriptions)
     }
     
-    func handleEditUser(user: User) {
-        self.selectedUser = user
+    func handleEditUser(callback: @escaping () -> Void) -> (CreateUserResponse) -> Void {
+        func _handleEditUser(response: CreateUserResponse) {
+            if let _user = self.users.filter({ $0.id == response.user.id }).first {
+                _user.bio = response.user.bio
+            } else {
+                self.users.append(response.user)
+            }
+            self.selectedUser = response.user
+            
+            callback()
+        }
+        
+        return _handleEditUser
     }
     
     func fetchUser(userID: Int) {
         let endpoint = Endpoint(path: "/users/\(userID)")
         
+        let request: AnyPublisher<FetchUserResponse, Error> = network.get(url: endpoint.url, headers: defaultHeaders(), handler: handleFetchMap)
+
         network.get(url: endpoint.url, headers: defaultHeaders(), handler: handleFetchMap)
             .sink(
-                receiveCompletion: handleFetchCompletion,
+                receiveCompletion: { self.handleFetchCompletionWithRetry(complete: $0, retry: request, handler: self.handleFetchUser) },
                 receiveValue: handleFetchUser
             )
             .store(in: &subscriptions)
     }
 
-    private func handleFetchUser(user: User) {
-        self.selectedUser = user
+    private func handleFetchUser(response: FetchUserResponse) {
+        if let _user = self.users.filter({ $0.id == response.user.id }).first {
+            _user.bio = response.user.bio
+        } else {
+            self.users.append(response.user)
+        }
+        
+        self.selectedUser = response.user
     }
-    
-   
 }
 

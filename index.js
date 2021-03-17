@@ -49,11 +49,19 @@ app.route("/users/:userId")
   })
   .put(async (req, res) => {
     const { userId: id } = req.params;
+
+    if (id == 2) {
+      return res.status(401).json({})
+    }
     const { name, email, bio } = req.body;
 
-    await pool.query(`UPDATE users SET name=$1, email=$2, bio=$3 WHERE id=$4`, [name, email, bio, id]);
+    const { rows: users } = await pool.query(`UPDATE users SET name=$1, email=$2, bio=$3 WHERE id=$4 RETURNING *`, [name, email, bio, id]);
 
-    return res.json({ success: true });
+    if (users.length > 0) {
+      return res.json({ user: users[0] })
+    }
+
+    return res.status(404).json({ user: { }})
   })
   .delete(async (req, res) => {
     const { userId: id } = req.params;

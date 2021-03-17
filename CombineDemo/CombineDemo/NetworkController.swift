@@ -30,6 +30,12 @@ extension Endpoint {
     }
 }
 
+enum NetworkError: Error {
+    case Unknown
+    case NotAllowed
+    case TokenExpiration
+}
+
 class NetworkController {
     typealias RequestHandler = (Data, URLResponse) throws -> Data
 

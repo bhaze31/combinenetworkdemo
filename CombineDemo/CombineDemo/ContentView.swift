@@ -23,7 +23,7 @@ struct UserRow: View {
     @ObservedObject var user: User
     
     var body: some View {
-        NavigationLink(destination: Text("Hello")) {
+        NavigationLink(destination: UserDetailView(user: user)) {
             HStack {
                 VStack(alignment: .leading) {
                     Text(user.name)

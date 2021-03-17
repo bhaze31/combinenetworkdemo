@@ -14,6 +14,7 @@
 		2B74E86F2600300900B5AF65 /* NetworkController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B74E86E2600300900B5AF65 /* NetworkController.swift */; };
 		2B74E8722600301500B5AF65 /* UserViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B74E8712600301500B5AF65 /* UserViewModel.swift */; };
 		2B74E87526003F6400B5AF65 /* AddUserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B74E87426003F6400B5AF65 /* AddUserView.swift */; };
+		2B74E8782600527500B5AF65 /* UserDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B74E8772600527500B5AF65 /* UserDetailView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -26,6 +27,7 @@
 		2B74E86E2600300900B5AF65 /* NetworkController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkController.swift; sourceTree = "<group>"; };
 		2B74E8712600301500B5AF65 /* UserViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserViewModel.swift; sourceTree = "<group>"; };
 		2B74E87426003F6400B5AF65 /* AddUserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddUserView.swift; sourceTree = "<group>"; };
+		2B74E8772600527500B5AF65 /* UserDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserDetailView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -60,6 +62,7 @@
 			children = (
 				2B74E85E26002F8100B5AF65 /* CombineDemoApp.swift */,
 				2B74E86026002F8100B5AF65 /* ContentView.swift */,
+				2B74E8772600527500B5AF65 /* UserDetailView.swift */,
 				2B74E87426003F6400B5AF65 /* AddUserView.swift */,
 				2B74E86226002F8400B5AF65 /* Assets.xcassets */,
 				2B74E86726002F8400B5AF65 /* Info.plist */,
@@ -151,6 +154,7 @@
 				2B74E8722600301500B5AF65 /* UserViewModel.swift in Sources */,
 				2B74E87526003F6400B5AF65 /* AddUserView.swift in Sources */,
 				2B74E85F26002F8100B5AF65 /* CombineDemoApp.swift in Sources */,
+				2B74E8782600527500B5AF65 /* UserDetailView.swift in Sources */,
 				2B74E86F2600300900B5AF65 /* NetworkController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
